@@ -1,0 +1,179 @@
+---
+title: "Cuba"
+author: "Liwen Yin"
+format: html
+editor: visual
+---
+# Cuba report 
+```{r}
+library(rnaturalearth)
+library(sf)
+library(dplyr)
+library(tmap)
+library(leaflet)
+```
+
+## Static Map of Cuba
+Cuba, officially the Republic of Cuba, is an island country, comprising the island of Cuba (largest island), Isla de la Juventud, and 4,195 islands, islets and cays surrounding the main island. It is located where the northern Caribbean Sea, Gulf of Mexico, and Atlantic Ocean meet.
+```{r}
+#word data
+land <- st_read("ne_10m_land/ne_10m_land.shp")
+if (is.na(st_crs(land))) {
+  st_crs(land) <- 4326
+}
+#cuba area
+cuba_extent <- st_bbox(c(xmin = -85, ymin = 19, xmax = -74, ymax = 24), crs = st_crs(land))
+land <- st_transform(land, crs = 4326)
+
+cuba <- st_crop(land, cuba_extent)
+
+physical_labels <- st_read("ne_50m_geography_regions_points/ne_50m_geography_regions_points.shp")
+physical_labels <- st_transform(physical_labels, st_crs(cuba))
+
+cuba_extent_sf <- st_as_sfc(cuba_extent)
+
+cuba_labels <- physical_labels[st_intersects(physical_labels, cuba_extent_sf, sparse = FALSE), ]
+```
+
+```{r}
+#cuba map
+map_cuba <- tm_shape(cuba) +
+  tm_polygons(col = "skyblue", border.col = "black") +
+  tm_layout(
+    title = "Cuba land",
+    title.size = 1,
+    title.position = c("left", "top"),
+    legend.outside = TRUE
+  )
+
+#cuba on world map
+map_world <- tm_shape(land) +
+  tm_polygons(col = "lightgray", border.col = "white") +  
+  tm_shape(cuba) +
+  tm_polygons(col = "red", border.col = "black") +  
+  tm_layout(
+    title = "Cuba's Location on World Map",
+    title.size = 1,
+    title.position = c("left", "top")
+  )
+tmap_arrange(map_cuba, map_world)  
+```
+The two maps show the outline of the Cuba main island and surrounding small islands, as well as the location of Cuba in the whole world.
+
+```{r}
+#world interaction
+world_map <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(
+    data = land,
+    fillColor = "lightgray",
+    color = "white",
+    weight = 0.5,
+    fillOpacity = 0.7,
+    popup = ~"World Map"
+  ) %>%
+  addPolygons(
+    data = cuba,
+    fillColor = "red",
+    color = "black",
+    weight = 1,
+    fillOpacity = 0.8,
+    popup = ~"Cuba"
+  ) %>%
+  addCircleMarkers(
+    lng = -80,
+    lat = 21.5,
+    radius = 8,
+    color = "blue",
+    fillColor = "blue",
+    fillOpacity = 1,
+    popup = "Cuba Center"
+  )
+world_map
+```
+
+```{r}
+#cuba interaction
+cuba_map <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(
+    data = cuba,
+    fillColor = "skyblue",
+    color = "black",
+    weight = 1,
+    fillOpacity = 0.6,
+    popup = ~"Cuba Land"
+  )
+
+cuba_map
+
+```
+We can also use interaction page to zoom in and out and see the specific location, and different areas in Cuba.
+
+
+Cuba is a socialist republic governed by the Communist Party of Cuba, with a one-party system and leadership centralized under the President and Prime Minister. Its economy is a mixed socialist model, dominated by state-controlled industries such as tourism, agriculture, and biotechnology, while facing challenges like the U.S. embargo and inefficiencies in state-run sectors. The population, approximately 11 million, reflects a mix of Afro-Cuban, European, and Mestizo heritage, with Spanish as the official language. Cuba boasts high literacy rates and universal healthcare, contributing to one of the highest life expectancies in the region. Geographically, it is the largest island in the Caribbean, featuring tropical climates and diverse ecosystems, though it is vulnerable to hurricanes and coastal erosion.
+
+Historically, Cuba transitioned from a Spanish colony to independence in 1902, and the Cuban Revolution in 1959 established its socialist state under Fidel Castro. During the Cold War, it became a focal point of global tension, notably during the Cuban Missile Crisis. Today, Cuba is culturally vibrant, renowned for its music, dance, cigars, and cuisine, which combine Spanish, African, and Caribbean influences. Despite economic and political challenges, Cuba remains a distinctive nation with a rich history and enduring cultural legacy.
+```{r}
+library(WDI)
+data_T <- WDI(
+  country = "CU", 
+  indicator = c(
+    "NY.GDP.MKTP.CD",   #GDP
+    "ST.INT.ARVL" , #international traveler
+     "IS.AIR.PSGR"  , #air transport pass
+     "EG.USE.ELEC.KH.PC", #ele consum
+    "AG.LND.TOTL.K2",
+    "EN.ATM.PM25.MC.M3",
+    "SP.POP.TOTL",
+    "IS.RRS.PASG.KM",
+    "SH.ALC.PCAP.LI" #Total alcohol consumption per capita
+  ),
+  start = 2000, 
+  end = 2024
+)
+
+```
+
+```{r}
+# Load necessary library
+library(ggplot2)
+
+# Assuming data_T is the dataset you showed in the screenshot
+# Replace `data_T` with the correct variable name if it differs
+
+# Create the GDP visualization
+ggplot(data = data_T, aes(x = year, y = NY.GDP.MKTP.CD)) +
+  geom_line(color = "blue", size = 1.2) +  # Line plot for GDP over years
+  geom_point(color = "red", size = 2) +   # Points to highlight individual years
+  labs(
+    title = "Cuba's GDP Over Time",
+    x = "Year",
+    y = "GDP (current US$)"
+  ) +
+  theme_minimal() +
+  theme(
+    text = element_text(size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+```{r}
+data_T <- WDI(
+  country = "CU",
+  indicator = c(
+    "NY.GDP.MKTP.CD",   # GDP
+    "ST.INT.ARVL",      # International travelers
+    "IS.AIR.PSGR",      # Air transport passengers
+    "EG.USE.ELEC.KH.PC",# Electricity consumption
+    "AG.LND.TOTL.K2",   # Land area
+    "EN.ATM.PM25.MC.M3",# PM2.5
+    "SP.POP.TOTL",      # Population
+    "IS.RRS.PASG.KM",   # Rail passengers
+    "SH.ALC.PCAP.LI"    # Alcohol consumption per capita
+  ),
+  start = 2000,
+  end = 2024
+)
+write.csv(data_T, "cuba_wdi_data.csv", row.names = FALSE)
+```
+
